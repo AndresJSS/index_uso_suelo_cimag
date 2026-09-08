@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <!-- Leyenda -->
+        <div style="position: fixed; 
+            bottom: 60px; left: 50px; width: 420px; 
+            z-index: 9999; font-size: 13px; font-family: sans-serif;">
+            <div style="font-weight: bold; text-align: left; margin-bottom: 10px; color: black;">Uso de Suelo (Dynamic World)</div>
+            <div style="display: flex; flex-wrap: wrap; row-gap: 8px; column-gap: 5px;">
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Cuerpos de agua permanentes">
+                <div style="width: 15px; height: 15px; background-color: #419BDF; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Agua</span>
+            </div>
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Bosques y cobertura arbórea densa">
+                <div style="width: 15px; height: 15px; background-color: #397D49; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Árboles</span>
+            </div>
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Pasturas naturales o forrajes">
+                <div style="width: 15px; height: 15px; background-color: #88B053; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Pasto/Hierba</span>
+            </div>
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Vegetación en zonas húmedas">
+                <div style="width: 15px; height: 15px; background-color: #7A87C6; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Veg. Inundada</span>
+            </div>
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Cultivos agrícolas (Cereales, granos, etc.)">
+                <div style="width: 15px; height: 15px; background-color: #E49635; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Cultivos</span>
+            </div>
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Arbustos y matorrales">
+                <div style="width: 15px; height: 15px; background-color: #DFC35A; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Matorrales/Arbustos</span>
+            </div>
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Infraestructura y zonas urbanas">
+                <div style="width: 15px; height: 15px; background-color: #C4281B; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Construido/Urbano</span>
+            </div>
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Suelo descubierto sin vegetación">
+                <div style="width: 15px; height: 15px; background-color: #A59B8F; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Suelo Desnudo</span>
+            </div>
+            <div style="flex: 0 0 31%; display: flex; align-items: center;" title="Nieve o hielo permanente">
+                <div style="width: 15px; height: 15px; background-color: #B39FE1; margin-right: 6px; border: 1px solid #777;"></div>
+                <span style="color: black;">Nieve/Hielo</span>
+            </div>
+        </div>
+        <!-- Texto adicional en la esquina superior derecha -->
+        <div style="position: fixed; 
+                    bottom: 30px; left: 50px; width: auto; height: auto;
+                    z-index: 9999; font-size: 14px; color: black; font-weight: bold; text-align: center; font-family: sans-serif;">
+            <script>
+                const pais = "Panamá"; // País objetivo
+                const año = 2020;         // Año del análisis
+                const semestre = 1;       // Semestre del análisis
+                const texto = semestre === 1 
+                    ? `${pais} | ${año} | ${semestre}er semestre (Ene - Jun)` 
+                    : `${pais} | ${año} | ${semestre}do semestre (Jul - Dic)`;
+                document.write(texto);
+            </script>
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script>
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[4.0188434486524915,-84.68105564660301],[12.755872001317845,-76.23875312423554]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/qgis2web/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_SatelliteGoogle_0');
+        map.getPane('pane_SatelliteGoogle_0').style.zIndex = 400;
+        var layer_SatelliteGoogle_0 = L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+            pane: 'pane_SatelliteGoogle_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 18
+        });
+        layer_SatelliteGoogle_0;
+        map.createPane('pane_CartoPositron_1');
+        map.getPane('pane_CartoPositron_1').style.zIndex = 401;
+        var layer_CartoPositron_1 = L.tileLayer('https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+            pane: 'pane_CartoPositron_1',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 18
+        });
+        layer_CartoPositron_1;
+        map.addLayer(layer_CartoPositron_1);
+        map.createPane('pane_UsoSuelo_Panama_2020_S1_2');
+        map.getPane('pane_UsoSuelo_Panama_2020_S1_2').style.zIndex = 402;
+        var img_UsoSuelo_Panama_2020_S1_2 = 'data/UsoSuelo_Panama_2020_S1_2.png';
+        var img_bounds_UsoSuelo_Panama_2020_S1_2 = [[7.204488578638562,-83.05823116969096],[9.638922998602466,-77.1562997530257]];
+        var layer_UsoSuelo_Panama_2020_S1_2 = new L.imageOverlay(img_UsoSuelo_Panama_2020_S1_2,
+                                              img_bounds_UsoSuelo_Panama_2020_S1_2,
+                                              {pane: 'pane_UsoSuelo_Panama_2020_S1_2'});
+        bounds_group.addLayer(layer_UsoSuelo_Panama_2020_S1_2);
+        map.addLayer(layer_UsoSuelo_Panama_2020_S1_2);
+        var overlaysTree = [
+            {label: "UsoSuelo_Panama_2020_S1", layer: layer_UsoSuelo_Panama_2020_S1_2},
+            {label: "CartoPositron", layer: layer_CartoPositron_1, radioGroup: 'bm' },
+            {label: "SatelliteGoogle", layer: layer_SatelliteGoogle_0, radioGroup: 'bm' },]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        L.ImageOverlay.include({
+            getBounds: function () {
+                return this._bounds;
+            }
+        });
+        </script>        
+    </body>
+</html>
